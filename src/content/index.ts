@@ -6,6 +6,12 @@ startButton.style.right = '120px'
 startButton.className =
   'btn btn-neutral whitespace-nowrap text-gray-700 shadow-[0px_1px_6px_0px_rgba(0,0,0,0.02)] dark:text-gray-300 md:whitespace-normal'
 document.body.appendChild(startButton)
+// startButton.textContent = 'Start'
+// startButton.className = 'btn relative btn-neutral -z-0 whitespace-nowrap border-0 md:border'
+// // @ts-ignore
+// startButton['as'] = 'button'
+// // @ts-ignore
+// document.querySelector('form').querySelector('div').firstChild?.firstChild.appendChild(startButton)
 startButton.onclick = () => start(5)
 
 const stopButton = document.createElement('button')
@@ -16,90 +22,103 @@ stopButton.style.right = '50px'
 stopButton.className =
   'btn btn-neutral whitespace-nowrap text-gray-700 shadow-[0px_1px_6px_0px_rgba(0,0,0,0.02)] dark:text-gray-300 md:whitespace-normal'
 document.body.appendChild(stopButton)
+// stopButton.textContent = 'Stop'
+// stopButton.className = 'btn relative btn-neutral -z-0 whitespace-nowrap border-0 md:border'
+// // @ts-ignore
+// startButton['as'] = 'button'
+// // @ts-ignore
+// document.querySelector('form').querySelector('div').firstChild?.firstChild.appendChild(stopButton)
 stopButton.onclick = () => stop()
-
-const counter = document.createElement('div')
-counter.style.position = 'fixed'
-counter.style.width = '140px'
-counter.style.height = '140px'
-counter.style.top = '70px'
-counter.style.right = '50px'
-counter.className =
-  'text-4xl font-semibold text-center text-white dark:text-gray-600 ml-auto mr-auto mb-10 sm:mb-16 flex gap-2 items-center justify-center flex-grow'
-document.body.appendChild(counter)
 
 // ---------------------------------------------------------------------------//
 
 let interval: NodeJS.Timer | null = null
+let report = ''
 
-const listUpTasks = (command: string, callback: Function) => {
+const listUpTasks = (command: string) => {
   let tasks: (string | null)[] = []
   let baseCommand = ''
   baseCommand = `
 以下の目標を達成するためのタスクを箇条書きにしてください。
-Rules:
+
+ルール:
 ・簡潔にタスクのみ記述
 ・詳細な説明は避ける
+
+目標:
 `
   send((baseCommand + command) as string)
 
-  setTimeout(() => {
-    tasks = Array.from(getLatestConversation().querySelectorAll('li')).map(
-      (elem) => elem.textContent,
-    )
-    callback(tasks)
-  }, 10000)
-}
-
-const execTask = async (task: string, callback: Function) => {
-  let solution = ''
-  let baseCommand = ''
-  baseCommand = `以下のタスクを実行してください。ただし、以下のルールに従うこと:
-    
-    ルール:
-    ・プログラミングが必要なタスクであるかを判断して下さい
-    ・プログラミングが必要なタスクであれば、サンプルコードを提示してください
-    ・必要がある場合には、プログラミングを行なってください
-    ・具体的な解決策を提示してください
-
-    タスク:
-
-    `
-  send(baseCommand + task)
-
-  setTimeout(() => {
-    solution = getLatestConversation().textContent as string
-    callback(solution)
-  })
-}
-
-const getLatestConversation = () => {
-  const conversations = document.querySelectorAll('[data-testid]')
-  const conversation = conversations[conversations.length - 2]
-  return conversation
-}
-
-const main = () => {
-  let i = 0
-  const firstCommand = document.querySelector('textarea')?.textContent as string
-  const solutions = []
-
-  listUpTasks(firstCommand, (tasks: string) => {
-    setInterval(() => {
+  return new Promise((resolve) => {
+    const interval = setInterval(() => {
       if (!document.querySelector('.result-streaming')) {
-        i++
-        if (i < tasks.length) {
-          execTask(tasks[i], (solution: string) => {
-            solutions.push(solution)
-          })
-        }
+        tasks = Array.from(getLatestConversation().querySelectorAll('li')).map(
+          (elem) => elem.textContent,
+        )
+        clearInterval(interval)
+        resolve(tasks)
       }
     }, 3000)
   })
 }
 
+const execTask = async (goal: string, task: string) => {
+  let solution = ''
+  let baseCommand = ''
+  baseCommand = `以下のタスクを実行してください。ただし、以下のルールに従うこと:
+    
+    ルール:
+    ・「${goal}」という目標が前提にあることを考慮してください
+    ・プログラミングが必要なタスクであるかを判断して下さい
+    ・プログラミングが必要なタスクであれば、サンプルコードを提示してください
+    ・具体的な解決策を提示してください
+    ・タスクの実行結果を示してください
+
+    タスク:
+    `
+  send(baseCommand + task)
+
+  return new Promise((resolve) => {
+    const regenerateButton = document.querySelector('form')!.querySelector('button')
+    const interval = setInterval(() => {
+      if (
+        !document.querySelector('.result-streaming') &&
+        regenerateButton?.textContent === 'Regenerate'
+      ) {
+        console.log(getLatestConversation())
+        solution = getLatestConversation().innerHTML as string
+        clearInterval(interval)
+        resolve(solution)
+      } else if (regenerateButton?.textContent !== 'Regenerate') {
+        regenerateButton?.click()
+      }
+    }, 3000)
+  })
+}
+
+const getLatestConversation = () => {
+  const conversations = document.querySelectorAll('.markdown')
+  const conversation = conversations[conversations.length - 1]
+  return conversation
+}
+
+const main = async () => {
+  let i = 0
+  const firstCommand = document.querySelector('textarea')?.textContent as string
+  report += firstCommand
+
+  const tasks = (await listUpTasks(firstCommand)) as string[]
+  console.log(tasks)
+  for (const task of tasks) {
+    const solution = await execTask(firstCommand, task)
+    console.log(task, solution)
+    report += '\n' + task + '\n' + solution
+  }
+  console.log(report)
+}
+
 const start = async (n: number) => {
-  main()
+  await main()
 }
 
 const stop = () => {
