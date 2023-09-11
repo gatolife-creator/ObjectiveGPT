@@ -32,20 +32,24 @@ stopButton.onclick = () => stop()
 
 // ---------------------------------------------------------------------------//
 
-let interval: NodeJS.Timer | null = null
+let isStopped = false
 let report = ''
+let lang = 'ja'
 
 const listUpTasks = (command: string) => {
   let tasks: (string | null)[] = []
   let baseCommand = ''
   baseCommand = `
-以下の目標を達成するためのタスクを箇条書きにしてください。
+Please list up the tasks you need to do to achieve the goal below.
 
-ルール:
-・簡潔にタスクのみ記述
-・詳細な説明は避ける
+Rules:
+・Answer in ${lang}
+・Concrete answer is not needed. Just answer tasks.
+・Please be sure to use this format
+    ## Tasks
+    <Task list would be here using markdown like "1. and 2. ">
 
-目標:
+Goal:
 `
   send((baseCommand + command) as string)
 
@@ -65,16 +69,33 @@ const listUpTasks = (command: string) => {
 const execTask = async (goal: string, task: string) => {
   let solution = ''
   let baseCommand = ''
-  baseCommand = `以下のタスクを実行してください。ただし、以下のルールに従うこと:
+  baseCommand = `Please do following task, and you need to follow the rules below:
     
-    ルール:
-    ・「${goal}」という目標が前提にあることを考慮してください
-    ・プログラミングが必要なタスクであるかを判断して下さい
-    ・プログラミングが必要なタスクであれば、サンプルコードを提示してください
-    ・具体的な解決策を提示してください
-    ・タスクの実行結果を示してください
-
-    タスク:
+    Rules:
+    ・Answer in ${lang}
+    ・Please take an account the goal "${goal}"
+    ・Please do coding as long as you can
+    ・Do not provide abstract answer, but answer with concrete solution and even do the work as long as you can
+    ・Please rate your task progress you've done, using following template
+        - Does your work get useful literally "right away?" [0 to 10]
+        - Is your answer literally "concrete?" [0 to 10]
+    ・You "must" use this format:
+        ## <Task name would be here>
+        ### Solutions
+        <Concrete solutions would be here>
+        if sample code is needed:
+            ### Sample Code
+            <Sample code would be here (Provide more concrete code as long as you can)>
+        ### Execution Results
+        <Execution results would be here>
+        ### Possible Risks
+        <Possible risks would be here>
+        ### Possible Improvements
+        <Possible improvements would be here>
+        ### Task Progress
+        <Display progress bar here. Use "⭐️" to represent 1 point, use "☆" to represent 0 point. Maximum stars count would be 10.>
+        <State why you rated it that way>
+    Task:
     `
   send(baseCommand + task)
 
@@ -103,7 +124,6 @@ const getLatestConversation = () => {
 }
 
 const main = async () => {
-  let i = 0
   const firstCommand = document.querySelector('textarea')?.textContent as string
   report += firstCommand
 
@@ -118,13 +138,14 @@ const main = async () => {
 }
 
 const start = async (n: number) => {
-  await main()
+  for (let i = 0; i < n; i++) {
+    if (isStopped) break
+    await main()
+  }
 }
 
 const stop = () => {
-  if (interval !== null) {
-    clearInterval(interval)
-  }
+  isStopped = true
 }
 
 const send = (message: string) => {
