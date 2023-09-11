@@ -6,12 +6,6 @@ startButton.style.right = '120px'
 startButton.className =
   'btn btn-neutral whitespace-nowrap text-gray-700 shadow-[0px_1px_6px_0px_rgba(0,0,0,0.02)] dark:text-gray-300 md:whitespace-normal'
 document.body.appendChild(startButton)
-// startButton.textContent = 'Start'
-// startButton.className = 'btn relative btn-neutral -z-0 whitespace-nowrap border-0 md:border'
-// // @ts-ignore
-// startButton['as'] = 'button'
-// // @ts-ignore
-// document.querySelector('form').querySelector('div').firstChild?.firstChild.appendChild(startButton)
 startButton.onclick = () => start(5)
 
 const stopButton = document.createElement('button')
@@ -22,12 +16,6 @@ stopButton.style.right = '50px'
 stopButton.className =
   'btn btn-neutral whitespace-nowrap text-gray-700 shadow-[0px_1px_6px_0px_rgba(0,0,0,0.02)] dark:text-gray-300 md:whitespace-normal'
 document.body.appendChild(stopButton)
-// stopButton.textContent = 'Stop'
-// stopButton.className = 'btn relative btn-neutral -z-0 whitespace-nowrap border-0 md:border'
-// // @ts-ignore
-// startButton['as'] = 'button'
-// // @ts-ignore
-// document.querySelector('form').querySelector('div').firstChild?.firstChild.appendChild(stopButton)
 stopButton.onclick = () => stop()
 
 // ---------------------------------------------------------------------------//
