@@ -1,11 +1,16 @@
-import {
-  startButton,
-  textAreaElement,
-  regenerateButton,
-  resultStreaming,
-  latestConversation,
-} from './component'
+const getMainElement = () => document.querySelector('main') as HTMLElement
+const getInputForm = () => getMainElement().querySelector('form') as HTMLFormElement
+const getTextAreaElement = () => getInputForm().querySelector('textarea') as HTMLTextAreaElement
+const getResultStreaming = () => document.querySelector('.result-streaming')
+const getRegenerateButton = () => document.querySelector('form')!.querySelector('button')
 
+const startButton = document.createElement('button')
+startButton.textContent = 'START'
+startButton.style.position = 'fixed'
+startButton.style.top = '25px'
+startButton.style.right = '120px'
+startButton.className =
+  'btn btn-neutral whitespace-nowrap text-gray-700 shadow-[0px_1px_6px_0px_rgba(0,0,0,0.02)] dark:text-gray-300 md:whitespace-normal'
 document.body.appendChild(startButton)
 startButton.onclick = () => start(1)
 
@@ -18,6 +23,9 @@ type TaskTree = {
   name: string
   subtask: TaskTree[]
 }
+
+const getLatestConversation = () =>
+  Array.from(document.querySelectorAll('.markdown')).at(-1) as HTMLElement
 
 const listUpTasks = (goal: string) => {
   let tasks: TaskTree[] = []
@@ -35,12 +43,13 @@ Rules:
 Goal:
 ${goal}
 `
+  console.log(prompt)
   send(prompt)
 
   return new Promise<TaskTree[]>((resolve) => {
     const interval = setInterval(() => {
-      if (!resultStreaming) {
-        tasks = Array.from(latestConversation.querySelectorAll('li')).map(
+      if (!getResultStreaming()) {
+        tasks = Array.from(getLatestConversation().querySelectorAll('li')).map(
           (elem) =>
             ({
               name: elem.textContent,
@@ -82,13 +91,13 @@ ${taskTree.name}
   send(prompt)
   return new Promise<TaskTree[]>((resolve, reject) => {
     const interval = setInterval(() => {
-      if (!resultStreaming) {
-        if (latestConversation.textContent?.includes('false')) {
+      if (!getResultStreaming()) {
+        if (getLatestConversation().textContent?.includes('false')) {
           clearInterval(interval)
           reject("You can't split this task into small pieces")
         }
-        console.log(latestConversation)
-        taskTrees = Array.from(latestConversation.querySelectorAll('li')).map(
+        console.log(getLatestConversation())
+        taskTrees = Array.from(getLatestConversation().querySelectorAll('li')).map(
           (elem) => ({ name: elem.textContent, subtask: [] } as TaskTree),
         )
         clearInterval(interval)
@@ -100,7 +109,7 @@ ${taskTree.name}
   })
 }
 
-const execTask = async (goal: string, taskTree: TaskTree) => {
+const execTask = async (goal: string, taskTree: TaskTree, duration: number) => {
   let solution = ''
   let prompt = ''
   prompt = `Please do following task, and you need to follow the rules below:
@@ -120,49 +129,54 @@ const execTask = async (goal: string, taskTree: TaskTree) => {
         ### Possible Risks
         <Possible risks would be here>
     Task:
-    ${taskTree}
+    ${taskTree.name}
     `
   send(prompt)
 
   return new Promise<string>((resolve) => {
     const interval = setInterval(() => {
-      if (!resultStreaming && regenerateButton?.textContent === 'Regenerate') {
-        solution = latestConversation.innerHTML as string
+      if (!getResultStreaming() && getRegenerateButton()?.textContent === 'Regenerate') {
+        solution = getLatestConversation().innerHTML as string
         clearInterval(interval)
-        resolve(solution)
-      } else if (regenerateButton?.textContent !== 'Regenerate') {
-        regenerateButton?.click()
+        setTimeout(() => {
+          resolve(solution)
+        }, duration)
+      } else if (getRegenerateButton()?.textContent !== 'Regenerate') {
+        getRegenerateButton()?.click()
       }
     }, 3000)
   })
 }
 
 const main = async () => {
-  const prompt = textAreaElement.textContent as string
+  const prompt = getTextAreaElement().textContent as string
+  console.log(getTextAreaElement().textContent)
   report += prompt
 
   const taskTrees = await listUpTasks(prompt)
   for (const taskTree of taskTrees) {
     try {
-      taskTree.subtask.push(...(await splitTask(prompt, taskTree, 2000)))
+      const tasks = await splitTask(prompt, taskTree, 2000)
+      taskTree.subtask.push(...tasks)
       console.log(taskTree)
     } catch (e) {
       console.log(e)
       continue
     }
   }
+  console.log(taskTrees)
 
   for (const taskTree of taskTrees) {
     if (taskTree.subtask.length > 0) {
       report += '\n' + taskTree.name
       for (const subtask of taskTree.subtask) {
-        const solution = await execTask(prompt, subtask)
+        const solution = await execTask(prompt, subtask, 2000)
         console.log(subtask, solution)
         report += '\n' + subtask.name + '\n' + solution
       }
     } else {
       for (const subtask of taskTree.subtask) {
-        const solution = await execTask(prompt, subtask)
+        const solution = await execTask(prompt, subtask, 2000)
         console.log(subtask, solution)
         report += '\n' + subtask.name + '\n' + solution
       }
@@ -179,10 +193,10 @@ const start = async (n: number) => {
 }
 
 const send = (message: string) => {
-  textAreaElement.focus()
-  textAreaElement.value = message
-  textAreaElement.dispatchEvent(new Event('input', { bubbles: true }))
-  textAreaElement.dispatchEvent(new Event('change', { bubbles: true }))
+  getTextAreaElement().focus()
+  getTextAreaElement().value = message
+  getTextAreaElement().dispatchEvent(new Event('input', { bubbles: true }))
+  getTextAreaElement().dispatchEvent(new Event('change', { bubbles: true }))
   const curSubmitButton: HTMLButtonElement = document.querySelector(
     'textarea ~ button',
   ) as HTMLButtonElement
